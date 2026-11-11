@@ -1,9 +1,10 @@
+
 CREATE OR REPLACE MATERIALIZED VIEW marathos.gold.dim_athlete AS
-SELECT DISTINCT
+SELECT
   athlete_id,
-  athlete_country,
-  athlete_year_of_birth,
-  athlete_gender,
-  athlete_age_category,
-  athlete_club
-FROM marathos.silver.marathos_obt;
+  MAX_BY(athlete_country, event_date) AS athlete_country,
+  MAX(athlete_year_of_birth) AS athlete_year_of_birth,
+  MAX(athlete_gender) AS athlete_gender,
+  MAX_BY(athlete_club, event_date) AS athlete_club
+FROM marathos.silver.marathos_obt
+GROUP BY athlete_id;

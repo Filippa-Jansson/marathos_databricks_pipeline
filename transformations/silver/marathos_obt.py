@@ -37,6 +37,7 @@ def marathos_obt():
             .when(col("event_distance_length").contains("h"), "time")
             .otherwise("unknown")
         )
+        .filter(col("event_type") != "unknown")
         .filter(
             ~(
                 (col("event_type") == "distance") &
@@ -70,10 +71,28 @@ def marathos_obt():
     )
     df_clean = (
         df_clean
-        .withColumn("event_id", abs(hash(col("event_name"))))
+        # An event is unique by name, date, year, distance and number of finishers.
+        # The year is included because some dates could not be parsed and are null.
+        # xxhash64 gives 64-bit ids, which avoids the collisions hash() (32-bit) caused.
+        .withColumn(
+            "event_id",
+            abs(xxhash64(
+                col("event_name"),
+                col("event_date"),
+                col("event_year"),
+                col("event_distance_length"),
+                col("event_number_of_finishers"),
+            ))
+        )
         .withColumn(
             "result_id",
-            abs(hash(col("event_name"), col("athlete_id"), col("athlete_performance")))
+            abs(xxhash64(
+                col("event_id"), 
+                col("athlete_id"), 
+                col("athlete_performance"),
+                col("athlete_year_of_birth"),
+                col("athlete_club")
+            ))
         )
         .withColumn(
             "athlete_year_of_birth",
@@ -88,7 +107,8 @@ def marathos_obt():
             .otherwise(trim(col("athlete_age_category")))
         )
     )
-
+    # Remove exact duplicate results from the source data
+    df_clean = df_clean.dropDuplicates(["result_id"])
     df_clean = df_clean.drop("event_date_clean")
 
     return df_clean
