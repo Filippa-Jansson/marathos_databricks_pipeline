@@ -35,9 +35,24 @@ CSV in volume  ──►  Bronze  ──►  Silver  ──►  Gold  ──► 
 - Filled missing clubs and age categories with `Unknown` and removed stray `*` characters
 - Kept only realistic average speeds (1–25 km/h) and birth years
 - Extracted the event date from date ranges like `01.06.2019-02.06.2019`
-- Created `event_id` and `result_id` keys for the dimensional model
+- Removed events measured in days, which have an unknown event type
+- Created `event_id` and `result_id` keys with 64-bit hashing (`xxhash64`) and removed exact duplicate results
 
 The reasoning behind each step is documented in [`explorations/eda_silver.ipynb`](explorations/eda_silver.ipynb).
+
+## Data quality findings
+
+Checking that every key in the gold layer was unique revealed several issues, which were fixed step by step:
+
+| Issue | Fix |
+|---|---|
+| The same event held every year got the same id, which inflated result counts in the dashboard (110 million instead of 6 million) | Built `event_id` from name, date, year, distance and number of finishers |
+| Several distances on the same day (e.g. 50 km and 100 km) shared an id | Included the distance in `event_id` |
+| Different events and results got the same id because 32-bit `hash()` collided | Switched to 64-bit `xxhash64()` |
+| `dim_athlete` had several rows per athlete, since age category and club change over time | One row per athlete with the latest values, and age category moved to the fact table |
+| The source data contains exact duplicate results, and some different athletes share the same `athlete_id` | Removed exact duplicates and added birth year and club to `result_id` |
+
+The last issue cannot be fully solved without better source data, so a few dozen of 1.2 million athletes may be merged in `dim_athlete`.
 
 ## Dimensional model
 
@@ -70,6 +85,5 @@ The gold layer feeds a Databricks dashboard and the **Marathon Athlete and Event
 The raw data had many small quality issues, and one of the main lessons was to prioritize the issues with the biggest impact on the analysis instead of trying to fix everything at once. Possible next steps:
 
 - Add a date dimension and country data with full country names
-- Generate ids with `dense_rank()` instead of `hash()` to rule out collisions
 - Schedule the pipeline to run automatically
 - Expand the dashboard with more insights
