@@ -59,7 +59,7 @@ The last issue cannot be fully solved without better source data, so a few dozen
 `fct_results` holds one row per athlete result and links to `dim_athlete` and `dim_event`. See [`dimensional_modeling/marathos_dimensional_model.pdf`](dimensional_modeling/marathos_dimensional_model.pdf).
 
 ## Dashboard and Genie
-
+![Marathos dashboard](docs/dashboard.png)
 The gold layer feeds a Databricks dashboard and the **Marathon Athlete and Event Analytics** Genie space, where stakeholders can ask questions in plain language. To make sure Genie's answers are reliable, they were checked against manual SQL queries in [`explorations/genie_verify.dbquery.ipynb`](explorations/genie_verify.dbquery.ipynb).
 
 ## Project structure
